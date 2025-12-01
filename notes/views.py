@@ -8,6 +8,8 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from .ai.summarizer import *
 from .ai.rewriter import *
 from .ai.keywords import *
+from .ai.titlegen import *
+import html
 # Create your views here.
 
 class NotesView(APIView):
@@ -86,3 +88,12 @@ class KeywordsApi(APIView):
             return Response({"error":"Text mandatory"}, status=400)
         keywords =extract_keywords(note)
         return Response({"note":list(keywords)}, status=200)
+    
+class TitleGenAPi(APIView):
+    def post(self, request):
+        title = request.data.get("text")
+        if not title:
+            return Response({"error":"Text mandatory"}, status=400)
+        generated_title = createTitle(title)
+        clean_title = html.unescape(generated_title)
+        return Response({"note": clean_title}, status=200)   
