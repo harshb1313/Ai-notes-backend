@@ -10,6 +10,7 @@ from .ai.rewriter import *
 from .ai.keywords import *
 from .ai.titlegen import *
 import html
+from .filters import NoteFilters
 # Create your views here.
 
 class NotesView(APIView):
@@ -23,7 +24,10 @@ class NotesView(APIView):
         return Response(serializers.errors, status=400)
     
     def get(self, request):
-        serializers = NoteSerializer(Note.objects.filter(owner=request.user), many=True)
+        query_set = Note.objects.filter(owner=request.user)
+        filter = NoteFilters(request.GET, queryset=query_set)
+        filter_qs = filter.qs
+        serializers = NoteSerializer(filter_qs, many=True)
         return Response(serializers.data, status=200)
     
         
