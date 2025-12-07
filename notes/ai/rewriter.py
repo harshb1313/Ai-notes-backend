@@ -9,7 +9,7 @@ def query_hf_api(model_name, payload, max_retries=3):
     """
     Generic function to query Hugging Face API with retry logic
     """
-    API_URL = f"https://router.huggingface.co/models/{model_name}"
+    API_URL = f"https://api-inference.huggingface.co/models/{model_name}"
     
     for attempt in range(max_retries):
         try:
