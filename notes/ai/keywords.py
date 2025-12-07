@@ -1,34 +1,43 @@
-from transformers import (
-    TokenClassificationPipeline,
-    AutoModelForTokenClassification,
-    AutoTokenizer,
-)
-from transformers.pipelines import AggregationStrategy
-import numpy as np
+import os
+import requests
 
+HUGGINGFACE_API_KEY = os.getenv("HUGGINGFACE_API_KEY")
+HEADERS = {"Authorization": f"Bearer {HUGGINGFACE_API_KEY}"}
 
-# Custom Pipeline Class
-class KeyphraseExtractionPipeline(TokenClassificationPipeline):
-    def __init__(self, model_name, *args, **kwargs):
-        super().__init__(
-            model=AutoModelForTokenClassification.from_pretrained(model_name),
-            tokenizer=AutoTokenizer.from_pretrained(model_name),
-            *args,
-            **kwargs
+def query_hf_api(model_name, payload):
+    """Generic function to query Hugging Face API"""
+    API_URL = f"https://api-inference.huggingface.co/models/{model_name}"
+    response = requests.post(API_URL, headers=HEADERS, json=payload)
+    return response.json()
+
+def extract_keywords(text):
+    """
+    Extract keywords using Keyphrase Extraction
+    Model: ml6team/keyphrase-extraction-kbir-inspec
+    """
+    try:
+        result = query_hf_api(
+            "ml6team/keyphrase-extraction-kbir-inspec",
+            {"inputs": text}
         )
-
-    def postprocess(self, all_outputs):
-        results = super().postprocess(
-            all_outputs=all_outputs,
-            aggregation_strategy=AggregationStrategy.SIMPLE,
-        )
-        return np.unique([result.get("word").strip() for result in results])
-
-
-# Load model only once
-keyword_model_name = "ml6team/keyphrase-extraction-kbir-inspec"
-keyword_pipe = KeyphraseExtractionPipeline(model_name=keyword_model_name)
-
-
-def extract_keywords(text: str):
-    return keyword_pipe(text)
+        
+        # Extract unique keywords from token classification results
+        if isinstance(result, list):
+            keywords = set()
+            for item in result:
+                if isinstance(item, dict) and "word" in item:
+                    keyword = item["word"].strip()
+                    # Remove special tokens like ##
+                    keyword = keyword.replace("##", "")
+                    if keyword:
+                        keywords.add(keyword)
+            return list(keywords)
+        
+        if isinstance(result, dict) and "error" in result:
+            print(f"API Error: {result['error']}")
+            return []
+        
+        return []
+    except Exception as e:
+        print(f"Error in extract_keywords: {str(e)}")
+        return []
