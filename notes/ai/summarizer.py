@@ -6,7 +6,7 @@ HEADERS = {"Authorization": f"Bearer {HUGGINGFACE_API_KEY}"}
 
 def query_hf_api(model_name, payload):
     """Generic function to query Hugging Face API"""
-    API_URL = f"https://api-inference.huggingface.co/models/{model_name}"
+    API_URL = f"https://router.huggingface.co/models/{model_name}"
     response = requests.post(API_URL, headers=HEADERS, json=payload)
     return response.json()
 
