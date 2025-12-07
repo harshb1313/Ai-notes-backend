@@ -37,7 +37,7 @@ def paraphrase_text(text):
                 print(f"API Error: {result['error']}")
                 return "Paraphrasing unavailable"
             return result.get("generated_text", "")
-        return text  # Return original if fails
+        return text
     except Exception as e:
         print(f"Error in paraphrase_text: {str(e)}")
-        return text  # Return original text on error
+        return text

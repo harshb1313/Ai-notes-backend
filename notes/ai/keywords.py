@@ -21,13 +21,11 @@ def extract_keywords(text):
             {"inputs": text}
         )
         
-        # Extract unique keywords from token classification results
         if isinstance(result, list):
             keywords = set()
             for item in result:
                 if isinstance(item, dict) and "word" in item:
                     keyword = item["word"].strip()
-                    # Remove special tokens like ##
                     keyword = keyword.replace("##", "")
                     if keyword:
                         keywords.add(keyword)
