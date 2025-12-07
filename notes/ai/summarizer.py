@@ -14,12 +14,36 @@ def query_hf_api(model_name, payload, max_retries=3):
     for attempt in range(max_retries):
         try:
             print(f"[Attempt {attempt + 1}/{max_retries}] Calling {model_name}")
-            response = requests.post(API_URL, headers=HEADERS, json=payload, timeout=60)
-            result = response.json()
+            print(f"API URL: {API_URL}")
+            print(f"API Key present: {bool(HUGGINGFACE_API_KEY)}")
+            print(f"API Key starts with 'hf_': {HUGGINGFACE_API_KEY.startswith('hf_') if HUGGINGFACE_API_KEY else False}")
             
-            # Log the raw response for debugging
+            response = requests.post(API_URL, headers=HEADERS, json=payload, timeout=60)
+            
+            # Log the raw response BEFORE parsing
             print(f"Response status: {response.status_code}")
-            print(f"Response body: {result}")
+            print(f"Response headers: {dict(response.headers)}")
+            print(f"Raw response text (first 500 chars): {response.text[:500]}")
+            
+            # Check if response is empty
+            if not response.text or response.text.strip() == "":
+                print("ERROR: Empty response from API")
+                if attempt < max_retries - 1:
+                    time.sleep(5)
+                    continue
+                return None
+            
+            # Try to parse JSON
+            try:
+                result = response.json()
+                print(f"Parsed JSON response: {result}")
+            except ValueError as e:
+                print(f"JSON parse error: {e}")
+                print(f"Full response text: {response.text}")
+                if attempt < max_retries - 1:
+                    time.sleep(5)
+                    continue
+                return None
             
             # Check if model is loading
             if isinstance(result, dict) and "error" in result:
@@ -29,7 +53,7 @@ def query_hf_api(model_name, payload, max_retries=3):
                 if "loading" in error_msg.lower() or "is currently loading" in error_msg.lower():
                     wait_time = result.get("estimated_time", 20)
                     print(f"Model loading... waiting {wait_time}s")
-                    time.sleep(wait_time + 5)  # Add 5s buffer
+                    time.sleep(wait_time + 5)
                     continue
                 
                 # Rate limit or other errors
@@ -56,7 +80,7 @@ def query_hf_api(model_name, payload, max_retries=3):
                 time.sleep(5)
                 continue
         except Exception as e:
-            print(f"Exception: {str(e)}")
+            print(f"Exception: {type(e).__name__}: {str(e)}")
             if attempt < max_retries - 1:
                 time.sleep(5)
                 continue
@@ -71,7 +95,7 @@ def summarize_text(text):
     try:
         print(f"Starting summarization for text of length: {len(text)}")
         
-        # Truncate if too long (BART has max input length)
+        # Truncate if too long
         max_length = 1024
         if len(text) > max_length:
             text = text[:max_length]
