@@ -64,6 +64,8 @@ class NotesDetailView(APIView):
             
 
 class NoteSummarizer(APIView):
+    authentication_classes = [JWTAuthentication]  # Add this
+    permission_classes = [IsAuthenticated]    
     def post(self, request, id):
         try:
             note = Note.objects.get(id=id, owner=request.user)

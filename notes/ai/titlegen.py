@@ -1,104 +1,59 @@
 import os
-import requests
-import time
+from huggingface_hub import InferenceClient
 
 HUGGINGFACE_API_KEY = os.getenv("HUGGINGFACE_API_KEY")
-HEADERS = {"Authorization": f"Bearer {HUGGINGFACE_API_KEY}"}
-
-def query_hf_api(model_name, payload, max_retries=3):
-    """
-    Generic function to query Hugging Face API with retry logic
-    """
-    API_URL = f"https://api-inference.huggingface.co/models/{model_name}"
-    
-    for attempt in range(max_retries):
-        try:
-            print(f"[Attempt {attempt + 1}/{max_retries}] Calling {model_name}")
-            response = requests.post(API_URL, headers=HEADERS, json=payload, timeout=60)
-            result = response.json()
-            
-            print(f"Response status: {response.status_code}")
-            print(f"Response body: {result}")
-            
-            if isinstance(result, dict) and "error" in result:
-                error_msg = result["error"]
-                
-                if "loading" in error_msg.lower() or "is currently loading" in error_msg.lower():
-                    wait_time = result.get("estimated_time", 20)
-                    print(f"Model loading... waiting {wait_time}s")
-                    time.sleep(wait_time + 5)
-                    continue
-                
-                print(f"API Error: {error_msg}")
-                if attempt < max_retries - 1:
-                    time.sleep(5)
-                    continue
-                return None
-            
-            if response.status_code != 200:
-                print(f"HTTP Error {response.status_code}")
-                if attempt < max_retries - 1:
-                    time.sleep(5)
-                    continue
-                return None
-            
-            return result
-            
-        except requests.exceptions.Timeout:
-            print(f"Request timeout")
-            if attempt < max_retries - 1:
-                time.sleep(5)
-                continue
-        except Exception as e:
-            print(f"Exception: {str(e)}")
-            if attempt < max_retries - 1:
-                time.sleep(5)
-                continue
-    
-    return None
 
 def createTitle(text):
     """
-    Generate title using Flan-T5 Base
-    Model: google/flan-t5-base
+    Generate title using a chat model via OpenAI-compatible endpoint
+    Using Qwen model which is fast and free
     """
     try:
-        print(f"Starting title generation for text of length: {len(text)}")
+        print(f"\n=== TITLE GENERATION START ===")
+        print(f"Input text length: {len(text)}")
+        print(f"API Key present: {bool(HUGGINGFACE_API_KEY)}")
         
-        text_snippet = text[:200] if len(text) > 200 else text
+        # Truncate text to reasonable length
+        text_snippet = text[:500] if len(text) > 500 else text
+        print(f"Text snippet: {text_snippet[:100]}...")
         
-        prompt = f"generate title: {text_snippet}"
-        result = query_hf_api(
-            "google/flan-t5-base",
+        # Create InferenceClient
+        client = InferenceClient(api_key=HUGGINGFACE_API_KEY)
+        
+        # Use chat completion with a prompt to generate title
+        messages = [
             {
-                "inputs": prompt,
-                "parameters": {
-                    "max_length": 64,
-                    "top_k": 60,
-                    "top_p": 0.9,
-                    "do_sample": True
-                }
+                "role": "user",
+                "content": f"Generate a short, concise title (5-10 words maximum) for this text. Only return the title, nothing else:\n\n{text_snippet}"
             }
+        ]
+        
+        # Use a fast, free model via the chat completion endpoint
+        response = client.chat_completion(
+            messages=messages,
+            model="Qwen/Qwen2.5-Coder-32B-Instruct",  # Fast and free model
+            max_tokens=50,
+            temperature=0.7
         )
         
-        if not result:
-            print("No result from API")
-            return "Untitled"
+        print(f"Response type: {type(response)}")
         
-        if isinstance(result, list) and len(result) > 0:
-            title = result[0].get("generated_text", "")
+        if response and hasattr(response, 'choices') and len(response.choices) > 0:
+            title = response.choices[0].message.content.strip()
+            # Clean up the title (remove quotes if present)
+            title = title.strip('"').strip("'")
             if title:
-                print(f"Generated title: {title}")
+                print(f"✓ Generated title: {title}")
+                print(f"=== TITLE GENERATION END ===\n")
                 return title
         
-        if isinstance(result, dict):
-            title = result.get("generated_text", "")
-            if title:
-                print(f"Generated title: {title}")
-                return title
-        
+        print("No title generated - returning 'Untitled'")
+        print(f"=== TITLE GENERATION END ===\n")
         return "Untitled"
         
     except Exception as e:
-        print(f"Error in createTitle: {str(e)}")
+        print(f"!!! Error in createTitle: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        print(f"=== TITLE GENERATION END ===\n")
         return "Untitled"
