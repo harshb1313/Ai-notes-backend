@@ -5,8 +5,8 @@ HUGGINGFACE_API_KEY = os.getenv("HUGGINGFACE_API_KEY")
 
 def summarize_text(text):
     """
-    Summarize text using BART Large CNN via Inference Providers
-    Model: facebook/bart-large-cnn
+    Summarize text using a chat model
+    Using meta-llama model which is reliable and fast
     """
     try:
         print(f"Starting summarization for text of length: {len(text)}")
@@ -17,28 +17,41 @@ def summarize_text(text):
             text = text[:max_length]
             print(f"Text truncated to {max_length} characters")
         
-        # Create InferenceClient
-        client = InferenceClient(token=HUGGINGFACE_API_KEY)
-        
-        # Use summarization method - removed invalid parameters
-        # InferenceClient.summarization() doesn't accept max_length/min_length directly
-        result = client.summarization(
-            text=text,
-            model="facebook/bart-large-cnn"
+        # Create InferenceClient with the NEW base URL
+        client = InferenceClient(
+            token=HUGGINGFACE_API_KEY,
+            base_url="https://router.huggingface.co"
         )
         
-        if result and hasattr(result, 'summary_text'):
-            summary = result.summary_text
-            print(f"Summary generated: {summary[:50]}...")
-            return summary
-        elif isinstance(result, dict) and 'summary_text' in result:
-            summary = result['summary_text']
-            print(f"Summary generated: {summary[:50]}...")
-            return summary
+        # Use chat completion with a prompt to summarize
+        messages = [
+            {
+                "role": "user",
+                "content": f"Summarize the following text in 2-3 concise sentences. Only return the summary, nothing else:\n\n{text}"
+            }
+        ]
         
-        print("Could not extract summary from response")
+        # Use Meta Llama 3.1 - reliable and fast
+        response = client.chat_completion(
+            messages=messages,
+            model="meta-llama/Llama-3.1-8B-Instruct",
+            max_tokens=200,
+            temperature=0.7
+        )
+        
+        print(f"Response type: {type(response)}")
+        
+        if response and hasattr(response, 'choices') and len(response.choices) > 0:
+            summary = response.choices[0].message.content.strip()
+            if summary:
+                print(f"Summary generated: {summary[:50]}...")
+                return summary
+        
+        print("Could not generate summary")
         return "Summary unavailable"
         
     except Exception as e:
         print(f"Error in summarize_text: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return "Summary unavailable"

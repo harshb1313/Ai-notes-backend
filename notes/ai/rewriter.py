@@ -5,8 +5,8 @@ HUGGINGFACE_API_KEY = os.getenv("HUGGINGFACE_API_KEY")
 
 def paraphrase_text(text):
     """
-    Paraphrase text using a chat model via OpenAI-compatible endpoint
-    Using Qwen model which is fast and free
+    Paraphrase text using a chat model
+    Using meta-llama model which is reliable and fast
     """
     try:
         print(f"\n=== PARAPHRASING START ===")
@@ -18,8 +18,11 @@ def paraphrase_text(text):
             text = text[:max_length]
             print(f"Text truncated to {max_length} characters")
         
-        # Create InferenceClient
-        client = InferenceClient(api_key=HUGGINGFACE_API_KEY)
+        # Create InferenceClient with the NEW base URL
+        client = InferenceClient(
+            token=HUGGINGFACE_API_KEY,
+            base_url="https://router.huggingface.co"
+        )
         
         # Use chat completion with a prompt to paraphrase
         messages = [
@@ -29,10 +32,10 @@ def paraphrase_text(text):
             }
         ]
         
-        # Use a fast, free model via the chat completion endpoint
+        # Use Meta Llama 3.1 - reliable and fast
         response = client.chat_completion(
             messages=messages,
-            model="Qwen/Qwen2.5-Coder-32B-Instruct",  # Fast and free model
+            model="meta-llama/Llama-3.1-8B-Instruct",
             max_tokens=1000,
             temperature=0.7
         )

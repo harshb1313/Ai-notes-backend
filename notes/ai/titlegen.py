@@ -5,8 +5,8 @@ HUGGINGFACE_API_KEY = os.getenv("HUGGINGFACE_API_KEY")
 
 def createTitle(text):
     """
-    Generate title using a chat model via OpenAI-compatible endpoint
-    Using Qwen model which is fast and free
+    Generate title using a chat model
+    Using meta-llama model which is reliable and fast
     """
     try:
         print(f"\n=== TITLE GENERATION START ===")
@@ -17,8 +17,11 @@ def createTitle(text):
         text_snippet = text[:500] if len(text) > 500 else text
         print(f"Text snippet: {text_snippet[:100]}...")
         
-        # Create InferenceClient
-        client = InferenceClient(api_key=HUGGINGFACE_API_KEY)
+        # Create InferenceClient with the NEW base URL
+        client = InferenceClient(
+            token=HUGGINGFACE_API_KEY,
+            base_url="https://router.huggingface.co"
+        )
         
         # Use chat completion with a prompt to generate title
         messages = [
@@ -28,10 +31,10 @@ def createTitle(text):
             }
         ]
         
-        # Use a fast, free model via the chat completion endpoint
+        # Use Meta Llama 3.1 - reliable and fast
         response = client.chat_completion(
             messages=messages,
-            model="Qwen/Qwen2.5-Coder-32B-Instruct",  # Fast and free model
+            model="meta-llama/Llama-3.1-8B-Instruct",
             max_tokens=50,
             temperature=0.7
         )
